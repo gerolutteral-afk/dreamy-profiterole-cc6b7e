@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calace Propiedades · Documentos</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1a1208; --paper:#f5f0e8; --cream:#ede8dc; --gold:#c9973a; --gold-light:#e8c97a; --muted:#7a7060; --border:#d4cfc4; --white:#fdfaf5; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"DM Sans",sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }
+  header { background:var(--ink); padding:16px 32px; display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid var(--gold); }
+  .logo-img img { height:48px; }
+  .header-right { color:#aaa; font-size:13px; text-align:right; }
+  .container { max-width:960px; margin:0 auto; padding:40px 24px; }
+  .section-title { font-family:"Playfair Display",serif; font-size:28px; margin-bottom:6px; }
+  .section-sub { color:var(--muted); font-size:14px; margin-bottom:32px; font-weight:300; }
+  .steps { display:flex; align-items:center; margin-bottom:36px; }
+  .step { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+  .step-num { width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; background:var(--white); }
+  .step.active .step-num { background:var(--gold); border-color:var(--gold); color:var(--ink); }
+  .step.active { color:var(--ink); font-weight:500; }
+  .step.done .step-num { background:var(--ink); border-color:var(--ink); color:var(--gold); }
+  .step-line { flex:1; height:1px; background:var(--border); margin:0 12px; }
+  .doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-bottom:32px; }
+  .doc-card { background:var(--white); border:1.5px solid var(--border); border-radius:10px; padding:20px 16px; cursor:pointer; transition:all .18s; position:relative; overflow:hidden; }
+  .doc-card::before { content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--gold); opacity:0; transition:opacity .18s; }
+  .doc-card:hover { border-color:var(--gold); transform:translateY(-2px); box-shadow:0 6px 20px rgba(201,151,58,.12); }
+  .doc-card:hover::before,.doc-card.selected::before { opacity:1; }
+  .doc-card.selected { border-color:var(--gold); background:#fffbf2; }
+  .doc-icon { font-size:26px; margin-bottom:10px; display:block; }
+  .doc-name { font-size:13px; font-weight:600; color:var(--ink); line-height:1.3; margin-bottom:4px; }
+  .doc-tag { font-size:11px; font-weight:300; }
+  .doc-tag.alquiler { color:#3a6a7a; } .doc-tag.venta { color:#7a3a3a; } .doc-tag.general { color:var(--muted); }
+  .filters { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .filter-btn { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:500; cursor:pointer; border:1.5px solid var(--border); background:var(--white); color:var(--muted); transition:all .15s; }
+  .filter-btn.active,.filter-btn:hover { background:var(--ink); color:var(--gold); border-color:var(--ink); }
+  .form-panel { background:var(--white); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; }
+  .form-header { background:var(--ink); padding:20px 28px; display:flex; align-items:center; justify-content:space-between; }
+  .form-header-title { font-family:"Playfair Display",serif; color:var(--white); font-size:18px; }
+  .form-header-tag { background:var(--gold); color:var(--ink); font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; text-transform:uppercase; }
+  .form-body { padding:28px; }
+  .form-section { margin-bottom:24px; }
+  .form-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px; }
+  .form-row.full { grid-template-columns:1fr; }
+  .field { display:flex; flex-direction:column; gap:5px; }
+  .field label { font-size:12px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .field input,.field select { border:1.5px solid var(--border); border-radius:8px; padding:10px 14px; font-family:"DM Sans",sans-serif; font-size:14px; color:var(--ink); background:var(--paper); outline:none; transition:border-color .15s; width:100%; }
+  .field input:focus,.field select:focus { border-color:var(--gold); background:var(--white); }
+  .form-actions { display:flex; justify-content:space-between; align-items:center; padding:20px 28px; background:var(--cream); border-top:1px solid var(--border); flex-wrap:wrap; gap:10px; }
+  .btn { padding:12px 24px; border-radius:8px; font-family:"DM Sans",sans-serif; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .15s; display:inline-flex; align-items:center; gap:8px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; transform:none !important; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1.5px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { border-color:var(--ink); color:var(--ink); }
+  .btn-primary { background:var(--gold); color:var(--ink); }
+  .btn-primary:hover:not(:disabled) { background:var(--gold-light); transform:translateY(-1px); box-shadow:0 4px 12px rgba(201,151,58,.3); }
+  .btn-dark { background:var(--ink); color:var(--gold); }
+  .btn-dark:hover:not(:disabled) { opacity:.85; }
+  .error-box { background:#fff0f0; border:1.5px solid #f0a0a0; border-radius:8px; padding:12px 18px; color:#8b2020; font-size:13px; margin:0 28px 16px; display:none; }
+  /* Loading overlay */
+  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(26,18,8,.75); z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:20px; }
+  .loading-overlay.show { display:flex; }
+  .spinner { width:52px; height:52px; border:4px solid rgba(201,151,58,.25); border-top-color:var(--gold); border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { color:var(--gold); font-size:16px; font-weight:500; letter-spacing:.3px; }
+  /* Success panel */
+  .success-panel { text-align:center; padding:60px 28px; }
+  .success-icon { width:68px; height:68px; background:#3a7a5a; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:30px; }
+  .success-title { font-family:"Playfair Display",serif; font-size:24px; margin-bottom:8px; }
+  .success-sub { color:var(--muted); font-size:14px; margin-bottom:28px; line-height:1.6; }
+  .success-actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  @media(max-width:600px) { .form-row{grid-template-columns:1fr;} header{padding:14px 16px;} .container{padding:20px 14px;} .doc-grid{grid-template-columns:repeat(2,1fr);} .form-body{padding:20px 16px;} .form-actions{padding:16px;} }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Generando PDF, esperá un momento...</div>
+</div>
+
+<header>
+  <div class="logo-img"><img src="data:image/png;base64,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" alt="Calace Propiedades"></div>
+  <div class="header-right">Gestión de Documentos<br><span style="font-size:11px;opacity:.5">v3.0</span></div>
+</header>
+
+<div class="container">
+  <div class="steps">
+    <div class="step active" id="s1"><div class="step-num">1</div><span>Tipo de documento</span></div>
+    <div class="step-line"></div>
+    <div class="step" id="s2"><div class="step-num">2</div><span>Completar datos</span></div>
+    <div class="step-line"></div>
+    <div class="step" id="s3"><div class="step-num">3</div><span>Descargar PDF</span></div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="step1">
+    <p class="section-title">¿Qué documento necesitás?</p>
+    <p class="section-sub">Seleccioná el tipo de documento para continuar</p>
+    <div class="filters">
+      <button class="filter-btn active" onclick="filterDocs('all',this)">Todos</button>
+      <button class="filter-btn" onclick="filterDocs('alquiler',this)">Alquiler</button>
+      <button class="filter-btn" onclick="filterDocs('venta',this)">Compraventa</button>
+      <button class="filter-btn" onclick="filterDocs('general',this)">General</button>
+    </div>
+    <div class="doc-grid">
+      <div class="doc-card" data-cat="alquiler" onclick="selectDoc('contrato-alquiler',this)"><span class="doc-icon">📋</span><div class="doc-name">Contrato de Alquiler</div><div class="doc-tag alquiler">Alquiler</div></div>
+      <div class="doc-card" data-cat="alquiler" onclick="selectDoc('reserva-alquiler',this)"><span class="doc-icon">🔑</span><div class="doc-name">Reserva de Alquiler</div><div class="doc-tag alquiler">Alquiler</div></div>
+      <div class="doc-card" data-cat="alquiler" onclick="selectDoc('autorizacion-alquiler',this)"><span class="doc-icon">✍️</span><div class="doc-name">Autorización de Alquiler</div><div class="doc-tag alquiler">Alquiler</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('oferta-compra',this)"><span class="doc-icon">🏠</span><div class="doc-name">Oferta de Compra</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('boleto-compraventa',this)"><span class="doc-icon">📜</span><div class="doc-name">Boleto de Compraventa</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('autorizacion-venta',this)"><span class="doc-icon">✍️</span><div class="doc-name">Autorización de Venta</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('contraoferta',this)"><span class="doc-icon">🔄</span><div class="doc-name">Contraoferta</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('recibo-refuerzo',this)"><span class="doc-icon">🧾</span><div class="doc-name">Recibo de Refuerzo</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('notif-refuerzo',this)"><span class="doc-icon">📨</span><div class="doc-name">Notif. Refuerzo Reserva</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="venta" onclick="selectDoc('notif-contraoferta',this)"><span class="doc-icon">📨</span><div class="doc-name">Notif. Aceptación Contraoferta</div><div class="doc-tag venta">Compraventa</div></div>
+      <div class="doc-card" data-cat="general" onclick="selectDoc('nota-presentacion',this)"><span class="doc-icon">🤝</span><div class="doc-name">Nota de Presentación</div><div class="doc-tag general">General</div></div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step2" style="display:none">
+    <div class="form-panel">
+      <div class="form-header">
+        <div class="form-header-title" id="formTitle"></div>
+        <div class="form-header-tag" id="formTag"></div>
+      </div>
+      <div class="form-body" id="formBody"></div>
+      <div class="error-box" id="errorBox"></div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="backToStep1()">← Cambiar</button>
+        <button class="btn btn-primary" id="generateBtn" onclick="generatePDF()">📄 Generar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="step3" style="display:none">
+    <div class="form-panel">
+      <div class="success-panel">
+        <div class="success-icon">✓</div>
+        <div class="success-title">¡PDF descargado!</div>
+        <p class="success-sub">El archivo se guardó en tu dispositivo.<br>Revisá la carpeta de Descargas.</p>
+        <div class="success-actions">
+          <button class="btn btn-dark" onclick="backToStep1()">Nuevo documento</button>
+          <button class="btn btn-primary" onclick="generatePDF()">Descargar de nuevo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+
+const BACKEND = "https://web-production-09027.up.railway.app";
+
+const FORMS = {
+  "autorizacion-alquiler": {
+    title:"Autorización de Alquiler", tag:"Alquiler",
+    sections:[
+      { title:"Propietario", fields:[
+        {id:"nombre", label:"Nombre y apellido", placeholder:"Juan García"},
+        {id:"dni", label:"DNI", placeholder:"20.123.456"},
+        {id:"direccion", label:"Dirección del inmueble", placeholder:"Av. Santa Fe 567, Piso 3°B, CABA", span:"full"},
+        {id:"localidad", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]},
+      { title:"Condiciones", fields:[
+        {id:"valor", label:"Valor mensual", placeholder:"250000"},
+        {id:"moneda", label:"Moneda", type:"select", options:["pesos","USD"]},
+        {id:"plazo", label:"Plazo", placeholder:"24 meses"},
+        {id:"honorarios", label:"Honorarios a cargo de", type:"select", options:["inquilino","propietario","ambas partes"]},
+        {id:"garantia", label:"Garantía", placeholder:"Garantía propietaria", span:"full"},
+      ]}
+    ]
+  },
+  "autorizacion-venta": {
+    title:"Autorización de Venta", tag:"Compraventa",
+    sections:[
+      { title:"Propietario", fields:[
+        {id:"propietario1_nombre", label:"Nombre y apellido", placeholder:"Ana Martínez"},
+        {id:"propietario1_dni", label:"DNI", placeholder:"18.456.789"},
+        {id:"direccion_inmueble", label:"Dirección del inmueble", placeholder:"Av. Del Libertador 456, CABA", span:"full"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]},
+      { title:"Condiciones", fields:[
+        {id:"precio_usd", label:"Precio de venta (USD)", placeholder:"120000"},
+        {id:"honorarios_pct", label:"Honorarios (%)", placeholder:"3"},
+        {id:"honorarios_cargo", label:"Honorarios a cargo de", type:"select", options:["comprador","vendedor","ambas partes"]},
+      ]}
+    ]
+  },
+  "reserva-alquiler": {
+    title:"Reserva de Alquiler", tag:"Alquiler",
+    sections:[
+      { title:"Interesado/a", fields:[
+        {id:"genero", label:"Género", type:"select", options:["Sr.","Sra."]},
+        {id:"moneda", label:"Moneda", type:"select", options:["Pesos","USD"]},
+        {id:"nombre_interesado", label:"Nombre y apellido", placeholder:"María López", span:"full"},
+        {id:"dni_interesado", label:"DNI", placeholder:"30.456.789"},
+        {id:"domicilio_interesado", label:"Domicilio", placeholder:"Calle Falsa 123, CABA"},
+      ]},
+      { title:"Inmueble", fields:[
+        {id:"direccion_inmueble", label:"Dirección", placeholder:"Av. Santa Fe 567", span:"full"},
+        {id:"uf_inmueble", label:"Piso / Depto / UF", placeholder:"3° B"},
+        {id:"destino", label:"Destino", placeholder:"uso habitacional"},
+        {id:"nombre_propietario", label:"Propietario/a", placeholder:"Juan García", span:"full"},
+      ]},
+      { title:"Condiciones", fields:[
+        {id:"monto_reserva", label:"Monto reserva", placeholder:"50000"},
+        {id:"medio_pago", label:"Medio de pago", placeholder:"transferencia bancaria"},
+        {id:"fecha_limite", label:"Fecha límite aceptación (dd/mm/aaaa)", placeholder:"30/04/2026"},
+        {id:"plazo_contrato", label:"Plazo del contrato", placeholder:"24 meses"},
+        {id:"monto_mensual", label:"Alquiler mensual", placeholder:"250000"},
+        {id:"ajustes", label:"Ajustes", placeholder:"trimestral por IPC"},
+        {id:"deposito", label:"Depósito", placeholder:"equivalente a 1 mes"},
+        {id:"garantia", label:"Garantía", placeholder:"garantía propietaria"},
+        {id:"fecha_firma_estimada", label:"Fecha estimada firma (dd/mm/aaaa)", placeholder:"01/05/2026"},
+        {id:"plazo_dias", label:"Días para firmar desde aceptación", placeholder:"10"},
+        {id:"honorarios", label:"Honorarios", placeholder:"un mes de alquiler"},
+        {id:"a_cargo_de", label:"A cargo de", placeholder:"del locatario"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  },
+  "contrato-alquiler": {
+    title:"Contrato de Alquiler", tag:"Alquiler",
+    sections:[
+      { title:"Locador (Propietario)", fields:[
+        {id:"locador1_genero", label:"Género", type:"select", options:["Sr.","Sra."]},
+        {id:"locador1_nombre", label:"Nombre y apellido", placeholder:"Juan García"},
+        {id:"locador1_dni", label:"DNI", placeholder:"20.123.456"},
+        {id:"locador1_domicilio", label:"Domicilio", placeholder:"Av. Corrientes 1234, CABA", span:"full"},
+        {id:"locador1_provincia", label:"Provincia", placeholder:"Buenos Aires"},
+        {id:"locador1_email", label:"Email", placeholder:"juan@email.com"},
+        {id:"locador1_celular", label:"Celular", placeholder:"11-5678-1234"},
+      ]},
+      { title:"Locatario (Inquilino)", fields:[
+        {id:"locatario_genero", label:"Género", type:"select", options:["Sr.","Sra."]},
+        {id:"locatario_nombre", label:"Nombre y apellido", placeholder:"María García"},
+        {id:"locatario_dni", label:"DNI", placeholder:"23.456.789"},
+        {id:"locatario_domicilio", label:"Domicilio actual", placeholder:"Av. Santa Fe 567, CABA", span:"full"},
+        {id:"locatario_email", label:"Email", placeholder:"maria@email.com"},
+        {id:"locatario_celular", label:"Celular", placeholder:"11-4567-8901"},
+      ]},
+      { title:"Inmueble", fields:[
+        {id:"inmueble_calle", label:"Calle y número", placeholder:"Av. Libertador 5678", span:"full"},
+        {id:"inmueble_piso", label:"Piso", placeholder:"4"},
+        {id:"inmueble_uf", label:"UF", placeholder:"15"},
+        {id:"inmueble_cochera", label:"Cochera (vacío si no tiene)", placeholder:"8"},
+        {id:"inmueble_emprendimiento", label:"Nombre edificio (vacío si no tiene)", placeholder:"Torre Libertador"},
+      ]},
+      { title:"Condiciones", fields:[
+        {id:"contrato_plazo_meses", label:"Duración (meses)", placeholder:"24"},
+        {id:"contrato_fecha_inicio", label:"Inicio (dd/mm/aaaa)", placeholder:"01/06/2026"},
+        {id:"contrato_precio_mensual", label:"Alquiler mensual (ARS)", placeholder:"850000"},
+        {id:"contrato_deposito_dolares", label:"Depósito en garantía (USD)", placeholder:"3000"},
+      ]},
+      { title:"Fiador", fields:[
+        {id:"fiador1_genero", label:"Género", type:"select", options:["Sr.","Sra."]},
+        {id:"fiador1_nombre", label:"Nombre y apellido", placeholder:"Carlos López"},
+        {id:"fiador1_dni", label:"DNI", placeholder:"11.222.333"},
+        {id:"fiador1_domicilio", label:"Domicilio", placeholder:"Calle Falsa 123"},
+        {id:"fiador1_barrio", label:"Barrio", placeholder:"Palermo"},
+        {id:"fiador1_provincia", label:"Provincia", placeholder:"Buenos Aires"},
+        {id:"fiador1_mail", label:"Email", placeholder:"carlos@email.com"},
+      ]},
+      { title:"Inmueble de Garantía del Fiador", fields:[
+        {id:"garantia_calle", label:"Calle y número", placeholder:"Av. Callao 890", span:"full"},
+        {id:"garantia_uf", label:"UF", placeholder:"5"},
+        {id:"garantia_piso", label:"Piso", placeholder:"2"},
+        {id:"garantia_ciudad", label:"Ciudad", placeholder:"CABA"},
+        {id:"garantia_circ", label:"Circ.", placeholder:"I"},
+        {id:"garantia_sec", label:"Secc.", placeholder:"B"},
+        {id:"garantia_manz", label:"Manz.", placeholder:"45"},
+        {id:"garantia_parc", label:"Parc.", placeholder:"12"},
+        {id:"garantia_matricula", label:"Matrícula", placeholder:"123-4567/89"},
+      ]},
+      { title:"RPI y Firma", fields:[
+        {id:"rpi_dominio", label:"Número de dominio RPI", placeholder:"N 12345678"},
+        {id:"rpi_fecha", label:"Fecha informe RPI (dd/mm/aaaa)", placeholder:"17/06/2026"},
+        {id:"inhibicion_num", label:"N° inhibiciones", placeholder:"N° 123456"},
+        {id:"inhibicion_fecha", label:"Fecha inhibiciones (dd/mm/aaaa)", placeholder:"15/06/2026"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"Ciudad Autónoma de Buenos Aires", span:"full"},
+      ]}
+    ]
+  },
+  "oferta-compra": {
+    title:"Oferta de Compra", tag:"Compraventa",
+    sections:[
+      { title:"Oferente", fields:[
+        {id:"oferente_nombre", label:"Nombre y apellido", placeholder:"Carlos Rodríguez"},
+        {id:"oferente_dni", label:"DNI", placeholder:"25.789.012"},
+        {id:"oferente_domicilio", label:"Domicilio", placeholder:"Calle Rivadavia 890"},
+        {id:"oferente_ciudad", label:"Ciudad", placeholder:"San Isidro"},
+      ]},
+      { title:"Inmueble", fields:[
+        {id:"localidad_inmueble", label:"Localidad y Partido", placeholder:"San Isidro, Partido de San Isidro", span:"full"},
+        {id:"provincia_inmueble", label:"Provincia", placeholder:"Buenos Aires"},
+        {id:"calle_inmueble", label:"Calle", placeholder:"Laprida"},
+        {id:"numero_inmueble", label:"Número", placeholder:"567"},
+        {id:"uf", label:"UF", placeholder:"5"},
+        {id:"circ", label:"Circ.", placeholder:"1"},
+        {id:"secc", label:"Secc.", placeholder:"A"},
+        {id:"manz", label:"Manz.", placeholder:"12"},
+        {id:"parc", label:"Parc.", placeholder:"3"},
+        {id:"matricula", label:"Matrícula", placeholder:"45678"},
+      ]},
+      { title:"Condiciones", fields:[
+        {id:"monto_reserva_usd", label:"Reserva (USD)", placeholder:"10000"},
+        {id:"medio_pago", label:"Medio de pago", placeholder:"transferencia bancaria"},
+        {id:"precio_total_usd", label:"Precio total (USD)", placeholder:"120000"},
+        {id:"pct_boleto", label:"% en Boleto", placeholder:"30"},
+        {id:"pct_escritura", label:"% en Escritura", placeholder:"70"},
+        {id:"plazo_boleto_dias", label:"Días para Boleto", placeholder:"10"},
+        {id:"plazo_escritura_dias", label:"Días para Escritura", placeholder:"60"},
+        {id:"fecha_limite", label:"Fecha límite aceptación (dd/mm/aaaa)", placeholder:"30/04/2026"},
+        {id:"honorarios", label:"Honorarios", placeholder:"3% + IVA"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+        {id:"vendedor1_nombre", label:"Nombre vendedor", placeholder:"Ana Martínez"},
+        {id:"vendedor1_dni", label:"DNI vendedor", placeholder:"18.234.567"},
+        {id:"vendedores_domicilio", label:"Domicilio vendedor/es", placeholder:"Av. Del Libertador 456", span:"full"},
+      ]}
+    ]
+  },
+  "boleto-compraventa": {
+    title:"Boleto de Compraventa", tag:"Compraventa",
+    sections:[
+      { title:"Vendedor", fields:[
+        {id:"vendedor1_tratamiento", label:"Género", type:"select", options:["Sr.","Sra."]},
+        {id:"vendedor1_nombre", label:"Nombre y apellido", placeholder:"Ana Martínez"},
+        {id:"vendedor1_genero", label:"Género gramatical", type:"select", options:["masculino","femenino"]},
+        {id:"vendedor1_fecha_nac", label:"Fecha de nacimiento", placeholder:"12 de marzo de 1975"},
+        {id:"vendedor1_dni", label:"DNI", placeholder:"18.456.789"},
+        {id:"vendedor1_cuil", label:"CUIT/CUIL", placeholder:"20-18456789-9"},
+        {id:"vendedores_domicilio", label:"Domicilio vendedor/es", placeholder:"Av. Callao 234, CABA", span:"full"},
+        {id:"vendedores_partido", label:"Localidad y Partido", placeholder:"CABA"},
+        {id:"vendedores_provincia", label:"Provincia", placeholder:"Buenos Aires"},
+      ]},
+      { title:"Comprador", fields:[
+        {id:"comprador1_tratamiento", label:"Género", type:"select", options:["Sr.","Sra."]},
+        {id:"comprador1_nombre", label:"Nombre y apellido", placeholder:"Carlos Rodríguez"},
+        {id:"comprador1_genero", label:"Género gramatical", type:"select", options:["masculino","femenino"]},
+        {id:"comprador1_fecha_nac", label:"Fecha de nacimiento", placeholder:"5 de julio de 1985"},
+        {id:"comprador1_dni", label:"DNI", placeholder:"25.789.012"},
+        {id:"comprador1_cuil", label:"CUIT/CUIL", placeholder:"20-25789012-4"},
+        {id:"compradores_domicilio", label:"Domicilio comprador/es", placeholder:"Calle Rivadavia 890", span:"full"},
+        {id:"compradores_ciudad", label:"Ciudad", placeholder:"San Isidro"},
+      ]},
+      { title:"Inmueble", fields:[
+        {id:"partido_inmueble", label:"Partido", placeholder:"San Isidro"},
+        {id:"provincia_inmueble", label:"Provincia", placeholder:"Buenos Aires"},
+        {id:"calle_inmueble", label:"Calle", placeholder:"Laprida"},
+        {id:"uf", label:"UF", placeholder:"5"},
+        {id:"circ", label:"Circ.", placeholder:"1"},
+        {id:"secc", label:"Secc.", placeholder:"A"},
+        {id:"fracc", label:"Fracc.", placeholder:"I"},
+        {id:"parc", label:"Parc.", placeholder:"3"},
+        {id:"partida_inmobiliaria", label:"Partida inmobiliaria", placeholder:"123456"},
+        {id:"matricula", label:"Matrícula", placeholder:"12345-CABA"},
+        {id:"poligonos", label:"Polígonos", placeholder:"no aplica"},
+        {id:"condominio_nombre", label:"Nombre edificio/condominio", placeholder:"Torre Libertador"},
+        {id:"entre_calles", label:"Entre calles", placeholder:"Av. Santa Fe y Av. Callao"},
+      ]},
+      { title:"Condiciones económicas", fields:[
+        {id:"precio_venta", label:"Precio de venta (USD)", placeholder:"120000"},
+        {id:"sena", label:"Seña (USD)", placeholder:"12000"},
+        {id:"fecha_escritura", label:"Fecha de escritura (dd/mm/aaaa)", placeholder:"01/09/2026"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  },
+  "contraoferta": {
+    title:"Contraoferta", tag:"Compraventa",
+    sections:[
+      { title:"Propietario", fields:[
+        {id:"propietario1_nombre", label:"Nombre y apellido", placeholder:"Ana Martínez"},
+        {id:"propietario1_dni", label:"DNI", placeholder:"18.456.789"},
+        {id:"propietario1_domicilio", label:"Domicilio", placeholder:"Av. Callao 234, CABA", span:"full"},
+      ]},
+      { title:"Condiciones", fields:[
+        {id:"domicilio_inmueble", label:"Dirección del inmueble", placeholder:"Av. Del Libertador 456, CABA", span:"full"},
+        {id:"fecha_oferta", label:"Fecha oferta original (dd/mm/aaaa)", placeholder:"01/04/2026"},
+        {id:"oferente_nombre", label:"Nombre oferente", placeholder:"Carlos Rodríguez"},
+        {id:"oferente_dni", label:"DNI oferente", placeholder:"25.789.012"},
+        {id:"precio_usd", label:"Precio contraofertado (USD)", placeholder:"118000"},
+        {id:"fecha_limite_escritura", label:"Fecha límite escritura (dd/mm/aaaa)", placeholder:"01/09/2026"},
+        {id:"validez_dias", label:"Validez de la contraoferta (días)", placeholder:"5"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  },
+  "recibo-refuerzo": {
+    title:"Recibo de Refuerzo de Reserva", tag:"Compraventa",
+    sections:[
+      { title:"Datos", fields:[
+        {id:"propietario1_nombre", label:"Propietario", placeholder:"Ana Martínez"},
+        {id:"propietario1_dni", label:"DNI propietario", placeholder:"18.456.789"},
+        {id:"propietario1_domicilio", label:"Domicilio propietario", placeholder:"Av. Callao 234, CABA", span:"full"},
+        {id:"propietario1_email", label:"Email propietario", placeholder:"ana@email.com"},
+        {id:"domicilio_inmueble", label:"Dirección del inmueble", placeholder:"Av. Del Libertador 456, CABA", span:"full"},
+        {id:"monto_usd", label:"Monto del refuerzo (USD)", placeholder:"5000"},
+        {id:"oferente_nombre", label:"Oferente", placeholder:"Carlos Rodríguez"},
+        {id:"oferente_dni", label:"DNI oferente", placeholder:"25.789.012"},
+        {id:"fecha_refuerzo", label:"Fecha del refuerzo (dd/mm/aaaa)", placeholder:"15/04/2026"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  },
+  "notif-refuerzo": {
+    title:"Notif. Refuerzo de Reserva", tag:"Compraventa",
+    sections:[
+      { title:"Datos", fields:[
+        {id:"cuit_inmobiliaria", label:"CUIT inmobiliaria", placeholder:"30-12345678-9"},
+        {id:"domicilio_inmobiliaria", label:"Domicilio inmobiliaria", placeholder:"Av. Del Libertador 100, San Isidro", span:"full"},
+        {id:"email_inmobiliaria", label:"Email inmobiliaria", placeholder:"info@calace.com.ar"},
+        {id:"oferente_nombre", label:"Oferente", placeholder:"Carlos Rodríguez"},
+        {id:"oferente_dni", label:"DNI oferente", placeholder:"25.789.012"},
+        {id:"oferente_domicilio", label:"Domicilio oferente", placeholder:"Calle Rivadavia 890", span:"full"},
+        {id:"oferente_email", label:"Email oferente", placeholder:"carlos@email.com"},
+        {id:"direccion_inmueble", label:"Dirección del inmueble", placeholder:"Av. Del Libertador 456", span:"full"},
+        {id:"localidad_inmueble", label:"Localidad del inmueble", placeholder:"San Isidro"},
+        {id:"precio_inmueble_usd", label:"Precio del inmueble (USD)", placeholder:"120000"},
+        {id:"monto_refuerzo_usd", label:"Monto del refuerzo (USD)", placeholder:"5000"},
+        {id:"monto_original_usd", label:"Reserva original (USD)", placeholder:"10000"},
+        {id:"monto_total_usd", label:"Total acumulado (USD)", placeholder:"15000"},
+        {id:"fecha_oferta_original", label:"Fecha oferta original (dd/mm/aaaa)", placeholder:"01/03/2026"},
+        {id:"fecha_contraoferta", label:"Fecha contraoferta (dd/mm/aaaa)", placeholder:"05/03/2026"},
+        {id:"fecha_aceptacion", label:"Fecha aceptación (dd/mm/aaaa)", placeholder:"10/03/2026"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  },
+  "notif-contraoferta": {
+    title:"Notif. Aceptación Contraoferta", tag:"Compraventa",
+    sections:[
+      { title:"Datos", fields:[
+        {id:"propietario1_nombre", label:"Propietario", placeholder:"Ana Martínez"},
+        {id:"propietario1_dni", label:"DNI propietario", placeholder:"18.456.789"},
+        {id:"propietario1_domicilio", label:"Domicilio propietario", placeholder:"Av. Callao 234, CABA", span:"full"},
+        {id:"domicilio_inmueble", label:"Dirección del inmueble", placeholder:"Av. Del Libertador 456, CABA", span:"full"},
+        {id:"fecha_contraoferta", label:"Fecha contraoferta (dd/mm/aaaa)", placeholder:"05/03/2026"},
+        {id:"oferente_nombre", label:"Oferente", placeholder:"Carlos Rodríguez"},
+        {id:"oferente_dni", label:"DNI oferente", placeholder:"25.789.012"},
+        {id:"cuit_inmobiliaria", label:"CUIT inmobiliaria", placeholder:"30-12345678-9"},
+        {id:"honorarios_pct", label:"Honorarios (%)", placeholder:"3"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  },
+  "nota-presentacion": {
+    title:"Nota de Presentación de Cliente", tag:"General",
+    sections:[
+      { title:"Inmobiliaria receptora", fields:[
+        {id:"inm_receptora_nombre", label:"Nombre inmobiliaria", placeholder:"Inmobiliaria XYZ"},
+        {id:"corredor_receptor_nombre", label:"Corredor receptor", placeholder:"Juan Pérez"},
+        {id:"corredor_receptor_matricula", label:"Matrícula corredor", placeholder:"CMCPSI 1234"},
+        {id:"corredor_receptor_contacto", label:"Contacto corredor", placeholder:"11 1234-5678", span:"full"},
+      ]},
+      { title:"Cliente y operación", fields:[
+        {id:"cliente_nombre", label:"Nombre y apellido del cliente", placeholder:"Carlos Rodríguez"},
+        {id:"cliente_dni", label:"DNI", placeholder:"25.789.012"},
+        {id:"inmueble_direccion", label:"Inmueble de interés", placeholder:"Av. Del Libertador 456, CABA", span:"full"},
+        {id:"division_honorarios", label:"División de honorarios", placeholder:"50/50"},
+        {id:"vigencia_dias", label:"Vigencia (días)", placeholder:"30"},
+        {id:"calace_contacto", label:"Contacto Calace", placeholder:"11 5678-1234"},
+        {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
+      ]}
+    ]
+  }
+};
+
+// Build JSON for contrato-alquiler (nested structure)
+function buildContratoData(d) {
+  return {
+    locador1: {
+      genero: d.locador1_genero, nombre: d.locador1_nombre, dni: d.locador1_dni,
+      domicilio: d.locador1_domicilio, provincia: d.locador1_provincia,
+      email: d.locador1_email, celular: d.locador1_celular
+    },
+    locador2: null,
+    locatario: {
+      genero: d.locatario_genero, nombre: d.locatario_nombre, dni: d.locatario_dni,
+      domicilio: d.locatario_domicilio, email: d.locatario_email, celular: d.locatario_celular
+    },
+    inmueble: {
+      calle: d.inmueble_calle, piso: d.inmueble_piso, uf: d.inmueble_uf,
+      cochera: d.inmueble_cochera || null, emprendimiento: d.inmueble_emprendimiento || null
+    },
+    contrato: {
+      plazo_meses: parseInt(d.contrato_plazo_meses),
+      fecha_inicio: d.contrato_fecha_inicio,
+      precio_mensual: parseInt(d.contrato_precio_mensual),
+      deposito_dolares: parseInt(d.contrato_deposito_dolares)
+    },
+    fiador1: {
+      genero: d.fiador1_genero, nombre: d.fiador1_nombre, dni: d.fiador1_dni,
+      domicilio: d.fiador1_domicilio, barrio: d.fiador1_barrio,
+      provincia: d.fiador1_provincia, mail: d.fiador1_mail
+    },
+    fiador2: null,
+    garantia: {
+      calle: d.garantia_calle, uf: d.garantia_uf, piso: d.garantia_piso,
+      ciudad: d.garantia_ciudad, circ: d.garantia_circ, sec: d.garantia_sec,
+      manz: d.garantia_manz, parc: d.garantia_parc, matricula: d.garantia_matricula
+    },
+    rpi: {
+      dominio: d.rpi_dominio, fecha: d.rpi_fecha,
+      inhibicion_num: d.inhibicion_num, inhibicion_fecha: d.inhibicion_fecha
+    },
+    localidad_firma: d.localidad_firma
+  };
+}
+
+let currentDocKey = null;
+
+function filterDocs(cat, btn) {
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".doc-card").forEach(c => {
+    c.style.display = (cat==="all" || c.dataset.cat===cat) ? "" : "none";
+  });
+}
+
+function selectDoc(key, card) {
+  document.querySelectorAll(".doc-card").forEach(c => c.classList.remove("selected"));
+  card.classList.add("selected");
+  currentDocKey = key;
+  setTimeout(() => {
+    document.getElementById("step1").style.display = "none";
+    document.getElementById("step2").style.display = "block";
+    renderForm(key);
+    updateSteps(2);
+  }, 150);
+}
+
+function renderForm(key) {
+  const doc = FORMS[key];
+  document.getElementById("formTitle").textContent = doc.title;
+  document.getElementById("formTag").textContent = doc.tag;
+  document.getElementById("errorBox").style.display = "none";
+  let html = "";
+  doc.sections.forEach(sec => {
+    html += `<div class="form-section"><div class="form-section-title">${sec.title}</div>`;
+    let i = 0;
+    while (i < sec.fields.length) {
+      const f = sec.fields[i];
+      if (f.span === "full") {
+        html += `<div class="form-row full">${renderField(f)}</div>`; i++;
+      } else {
+        const next = sec.fields[i+1];
+        if (next && next.span !== "full") {
+          html += `<div class="form-row">${renderField(f)}${renderField(next)}</div>`; i += 2;
+        } else {
+          html += `<div class="form-row full">${renderField(f)}</div>`; i++;
+        }
+      }
+    }
+    html += "</div>";
+  });
+  document.getElementById("formBody").innerHTML = html;
+}
+
+function renderField(f) {
+  const input = f.type === "select"
+    ? `<select id="field_${f.id}">${f.options.map(o=>`<option value="${o}">${o}</option>`).join("")}</select>`
+    : `<input type="text" id="field_${f.id}" placeholder="${f.placeholder||""}">`;
+  return `<div class="field"><label>${f.label}</label>${input}</div>`;
+}
+
+function getFormData() {
+  const doc = FORMS[currentDocKey];
+  const data = {};
+  doc.sections.forEach(sec => {
+    sec.fields.forEach(f => {
+      const el = document.getElementById("field_" + f.id);
+      if (el) data[f.id] = el.value.trim();
+    });
+  });
+  // Special nested structure for contrato-alquiler
+  if (currentDocKey === "contrato-alquiler") return buildContratoData(data);
+  return data;
+}
+
+async function generatePDF() {
+  const data = getFormData();
+  const btn = document.getElementById("generateBtn");
+  const errorBox = document.getElementById("errorBox");
+  errorBox.style.display = "none";
+  btn.disabled = true;
+  document.getElementById("loadingOverlay").classList.add("show");
+
+  try {
+    const response = await fetch(`${BACKEND}/generar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ doc_type: currentDocKey, data })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Error del servidor (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : "documento.pdf";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+
+    document.getElementById("step2").style.display = "none";
+    document.getElementById("step3").style.display = "block";
+    updateSteps(3);
+
+  } catch (err) {
+    errorBox.textContent = "Error: " + err.message;
+    errorBox.style.display = "block";
+  } finally {
+    document.getElementById("loadingOverlay").classList.remove("show");
+    btn.disabled = false;
+  }
+}
+
+function backToStep1() {
+  document.getElementById("step1").style.display = "block";
+  document.getElementById("step2").style.display = "none";
+  document.getElementById("step3").style.display = "none";
+  updateSteps(1);
+}
+
+function updateSteps(active) {
+  ["s1","s2","s3"].forEach((id,i) => {
+    const el = document.getElementById(id);
+    el.classList.remove("active","done");
+    if (i+1 < active) el.classList.add("done");
+    else if (i+1 === active) el.classList.add("active");
+  });
+}
+
+</script>
+</body>
+</html>
