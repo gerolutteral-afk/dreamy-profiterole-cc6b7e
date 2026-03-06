@@ -170,15 +170,6 @@ def build_pdf(data, output_path):
         story.append(Spacer(1, 8))
     # --- Fin logo ---
 
-    # --- Logo Calace Propiedades ---
-    _logo_path = _os.path.join(_os.path.dirname(__file__), "logo_calace.jpg")
-    if _os.path.exists(_logo_path):
-        _logo = RLImage(_logo_path, width=5*cm, height=2.3*cm)
-        _logo.hAlign = "LEFT"
-        story.append(_logo)
-        story.append(Spacer(1, 8))
-    # --- Fin logo ---
-
     # ── Título ─────────────────────────────────────────────────────────────
     story.append(Paragraph("RECIBO DE REFUERZO DE RESERVA", title_s))
 
