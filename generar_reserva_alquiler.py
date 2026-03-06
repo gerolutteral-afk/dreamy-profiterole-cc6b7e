@@ -218,6 +218,7 @@ def build_pdf(data, output_path):
         story.append(_logo)
         story.append(Spacer(1, 8))
     # --- Fin logo ---
+
     # ── Título ─────────────────────────────────────────────────────────────
     story.append(Paragraph("CONSTANCIA DE RESERVA DE ALQUILER", title_s))
 

@@ -203,7 +203,7 @@ def build_pdf(data, output_path):
         story.append(_logo)
         story.append(Spacer(1, 8))
     # --- Fin logo ---
-    
+
     # ════════════════════════════════════════════════════════════════════════
     # SECCIÓN 1: OFERTA DE COMPRA
     # ════════════════════════════════════════════════════════════════════════
