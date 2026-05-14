@@ -178,9 +178,20 @@ const FORMS = {
   "autorizacion-venta": {
     title:"Autorización de Venta", tag:"Compraventa",
     sections:[
-      { title:"Propietario", fields:[
-        {id:"propietario1_nombre", label:"Nombre y apellido", placeholder:"Ana Martínez"},
-        {id:"propietario1_dni", label:"DNI", placeholder:"18.456.789"},
+      { title:"Propietarios", fields:[
+        {id:"_num_prop", label:"Cantidad de propietarios", type:"select", options:["1","2","3","4","5","6"], span:"full"},
+        {id:"propietario1_nombre", label:"Propietario 1 — Nombre y apellido", placeholder:"Ana Martínez"},
+        {id:"propietario1_dni", label:"Propietario 1 — DNI", placeholder:"18.456.789"},
+        {id:"propietario2_nombre", label:"Propietario 2 — Nombre y apellido", placeholder:"Carlos Martínez", conditional:"_num_prop:2,3,4,5,6"},
+        {id:"propietario2_dni", label:"Propietario 2 — DNI", placeholder:"20.123.456", conditional:"_num_prop:2,3,4,5,6"},
+        {id:"propietario3_nombre", label:"Propietario 3 — Nombre y apellido", placeholder:"Laura García", conditional:"_num_prop:3,4,5,6"},
+        {id:"propietario3_dni", label:"Propietario 3 — DNI", placeholder:"25.789.012", conditional:"_num_prop:3,4,5,6"},
+        {id:"propietario4_nombre", label:"Propietario 4 — Nombre y apellido", placeholder:"Jorge López", conditional:"_num_prop:4,5,6"},
+        {id:"propietario4_dni", label:"Propietario 4 — DNI", placeholder:"22.333.444", conditional:"_num_prop:4,5,6"},
+        {id:"propietario5_nombre", label:"Propietario 5 — Nombre y apellido", placeholder:"Marta Díaz", conditional:"_num_prop:5,6"},
+        {id:"propietario5_dni", label:"Propietario 5 — DNI", placeholder:"28.555.666", conditional:"_num_prop:5,6"},
+        {id:"propietario6_nombre", label:"Propietario 6 — Nombre y apellido", placeholder:"Pedro Ruiz", conditional:"_num_prop:6"},
+        {id:"propietario6_dni", label:"Propietario 6 — DNI", placeholder:"30.777.888", conditional:"_num_prop:6"},
         {id:"direccion_inmueble", label:"Dirección del inmueble", placeholder:"Av. Del Libertador 456, CABA", span:"full"},
         {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
       ]},
@@ -564,9 +575,32 @@ function renderForm(key) {
 
 function renderField(f) {
   const input = f.type === "select"
-    ? `<select id="field_${f.id}">${f.options.map(o=>`<option value="${o}">${o}</option>`).join("")}</select>`
+    ? `<select id="field_${f.id}" onchange="handleConditionals()">${f.options.map(o=>`<option value="${o}">${o}</option>`).join("")}</select>`
     : `<input type="text" id="field_${f.id}" placeholder="${f.placeholder||""}">`;
-  return `<div class="field"><label>${f.label}</label>${input}</div>`;
+  const hidden = f.conditional ? ' style="display:none"' : '';
+  return `<div class="field" id="wrap_${f.id}"${hidden}><label>${f.label}</label>${input}</div>`;
+}
+
+function handleConditionals() {
+  const doc = FORMS[currentDocKey];
+  if (!doc) return;
+  doc.sections.forEach(sec => {
+    sec.fields.forEach(f => {
+      if (!f.conditional) return;
+      const [triggerId, triggerVals] = f.conditional.split(":");
+      const allowed = triggerVals.split(",");
+      const triggerEl = document.getElementById("field_" + triggerId);
+      const wrapEl = document.getElementById("wrap_" + f.id);
+      if (triggerEl && wrapEl) {
+        const show = allowed.includes(triggerEl.value);
+        wrapEl.style.display = show ? "" : "none";
+        if (!show) {
+          const input = document.getElementById("field_" + f.id);
+          if (input) input.value = "";
+        }
+      }
+    });
+  });
 }
 
 function getFormData() {
