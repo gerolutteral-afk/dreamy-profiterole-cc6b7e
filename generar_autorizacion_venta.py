@@ -20,8 +20,8 @@ from reportlab.lib import colors
 INMOBILIARIA = "Calace Propiedades"
 MARTILLERO   = "Mariangeles Calace"
 MAT_CMCPSI   = "7240"
-MAT_CUCIBCA  = "9796"
-MATRICULAS   = f"CMCPSI N° {MAT_CMCPSI} / CUCIBCA N° {MAT_CUCIBCA}"
+MAT_CUCICBA  = "9796"
+MATRICULAS   = f"CMCPSI N° {MAT_CMCPSI} / CUCICBA N° {MAT_CUCICBA}"
 COLEGIO      = "Colegio de Martilleros y Corredores Públicos del Partido de San Isidro"
 
 MESES_ES = {
@@ -113,17 +113,24 @@ def build_pdf(data, output_path):
     anio = hoy.year
 
     # Extraer datos
-    p1_nombre        = data["propietario1_nombre"]
-    p1_dni           = data["propietario1_dni"]
-    p2_nombre        = data.get("propietario2_nombre")   # None si no hay
-    p2_dni           = data.get("propietario2_dni")
+    propietarios = []
+    for i in range(1, 7):
+        n = data.get(f"propietario{i}_nombre", "").strip()
+        d = data.get(f"propietario{i}_dni", "").strip()
+        if n and d:
+            propietarios.append({"nombre": n, "dni": d})
+
     dir_inmueble     = data["direccion_inmueble"]
     precio_usd       = int(data["precio_usd"])
     honorarios_pct   = data["honorarios_pct"]
     honorarios_cargo = data["honorarios_cargo"]
     localidad        = data["localidad_firma"]
 
-    dos_propietarios = bool(p2_nombre and p2_dni)
+    multiples = len(propietarios) > 1
+    p1_nombre = propietarios[0]["nombre"]
+    p1_dni    = propietarios[0]["dni"]
+    # compat
+    dos_propietarios = multiples
 
     # Formatear precio
     precio_fmt = f"{precio_usd:,}".replace(",", ".")
@@ -143,10 +150,15 @@ def build_pdf(data, output_path):
     story.append(Paragraph("AUTORIZACIÓN DE VENTA", title_s))
 
     # ── Párrafo principal ──────────────────────────────────────────────────
-    if dos_propietarios:
+    if multiples:
+        partes = ", ".join(
+            f"<b>{p['nombre']}</b>, DNI Nº <b>{p['dni']}</b>"
+            for p in propietarios[:-1]
+        )
+        ultimo = propietarios[-1]
         sujeto = (
-            f"nosotros, <b>{p1_nombre}</b>, DNI Nº <b>{p1_dni}</b>, "
-            f"y <b>{p2_nombre}</b>, DNI Nº <b>{p2_dni}</b>, "
+            f"nosotros, {partes} "
+            f"y <b>{ultimo['nombre']}</b>, DNI Nº <b>{ultimo['dni']}</b>, "
             f"en nuestro carácter de <b>propietarios</b>"
         )
     else:
@@ -155,9 +167,10 @@ def build_pdf(data, output_path):
             f"en mi carácter de <b>propietario</b>"
         )
 
+    verbo = "autorizamos" if dos_propietarios else "autorizo"
     p_intro = (
         f"Por la presente, {sujeto} del inmueble ubicado en "
-        f"<b>{dir_inmueble}</b>, autorizo a la firma <b>{INMOBILIARIA}</b> "
+        f"<b>{dir_inmueble}</b>, {verbo} a la firma <b>{INMOBILIARIA}</b> "
         f"a ofrecer en venta dicho inmueble, bajo las siguientes condiciones:"
     )
     story.append(Paragraph(p_intro, body_s))
@@ -176,7 +189,7 @@ def build_pdf(data, output_path):
     # ── Autorizaciones ─────────────────────────────────────────────────────
     story.append(Spacer(1, 0.3 * cm))
     story.append(Paragraph(
-        "Asimismo, autorizo expresamente a la inmobiliaria a:", body_s
+        "Asimismo, autorizamos expresamente a la inmobiliaria a:" if dos_propietarios else "Asimismo, autorizo expresamente a la inmobiliaria a:", body_s
     ))
     for item in [
         "Tomar fotografías y/o videos del inmueble",
@@ -199,6 +212,11 @@ def build_pdf(data, output_path):
             "mencionado y que tengo plena capacidad legal para disponer del mismo.",
             body_s,
         ))
+    story.append(Paragraph(
+        "El precio de comercialización podrá ser modificado posteriormente por indicación "
+        "de la parte propietaria, incluso por medios electrónicos.",
+        body_s,
+    ))
 
     # ── Cierre ─────────────────────────────────────────────────────────────
     story.append(Paragraph(
@@ -209,17 +227,14 @@ def build_pdf(data, output_path):
 
     story.append(hr())
 
-    # ── Bloque firma propietario 1 ─────────────────────────────────────────
-    story.append(Paragraph("<b>Firma del Propietario:</b> ......................................................", firma_s))
-    story.append(Paragraph(f"<b>Nombre completo:</b> {p1_nombre}", firma_s))
-    story.append(Paragraph(f"<b>DNI Nº:</b> {p1_dni}", firma_s))
-
-    # ── Bloque firma propietario 2 (si aplica) ─────────────────────────────
-    if dos_propietarios:
-        story.append(Spacer(1, 0.5 * cm))
-        story.append(Paragraph("<b>Firma del Co-Propietario:</b> ......................................................", firma_s))
-        story.append(Paragraph(f"<b>Nombre completo:</b> {p2_nombre}", firma_s))
-        story.append(Paragraph(f"<b>DNI Nº:</b> {p2_dni}", firma_s))
+    # ── Bloques de firma por cada propietario ──────────────────────────────
+    for idx, p in enumerate(propietarios):
+        if idx > 0:
+            story.append(Spacer(1, 0.5 * cm))
+        label = "Co-Propietario" if idx > 0 else "Propietario"
+        story.append(Paragraph(f"<b>Firma del {label}:</b> ......................................................", firma_s))
+        story.append(Paragraph(f"<b>Nombre completo:</b> {p['nombre']}", firma_s))
+        story.append(Paragraph(f"<b>DNI Nº:</b> {p['dni']}", firma_s))
 
     story.append(hr())
 
@@ -230,7 +245,6 @@ def build_pdf(data, output_path):
     ))
     story.append(Paragraph(f"<b>Nombre completo:</b> {MARTILLERO}", firma_s))
     story.append(Paragraph(f"<b>Matrículas:</b> {MATRICULAS}", firma_s))
-    story.append(Paragraph(f"<b>Colegio Profesional:</b> {COLEGIO}", firma_s))
 
     doc.build(story)
     print(f"PDF generado: {output_path}")
