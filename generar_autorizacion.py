@@ -1,91 +1,217 @@
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
-import subprocess
-import os
-import json
-import uuid
+#!/usr/bin/env python3
+"""
+Genera un PDF de Autorización de Alquiler para Calace Propiedades.
+"""
 
-app = Flask(__name__)
-CORS(app)
+import argparse
+import locale
+from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.lib.colors import HexColor
 
-SCRIPTS = {
-    "autorizacion-alquiler":  "generar_autorizacion.py",
-    "autorizacion-venta":     "generar_autorizacion_venta.py",
-    "reserva-alquiler":       "generar_reserva_alquiler.py",
-    "contrato-alquiler":      "generar_contrato_alquiler.py",
-    "oferta-compra":          "generar_oferta_compra.py",
-    "boleto-compraventa":     "generar_boleto_compraventa.py",
-    "contraoferta":           "generar_contraoferta.py",
-    "recibo-refuerzo":        "generar_recibo_refuerzo.py",
-    "notif-refuerzo":         "generar_notif_refuerzo.py",
-    "notif-contraoferta":     "generar_notif_aceptacion.py",
-    "nota-presentacion":      "generar_nota_presentacion.py",
-}
 
-def get_apellido(data):
-    candidates = [
-        data.get("nombre"), data.get("nombre_interesado"),
-        data.get("locatario_nombre"), data.get("oferente_nombre"),
-        data.get("comprador1_nombre"), data.get("cliente_nombre"),
-        data.get("propietario1_nombre"), data.get("oferente"),
-        data.get("propietario_nombre"),
+# --- Datos fijos de la inmobiliaria ---
+INMOBILIARIA = "Calace Propiedades"
+MARTILLERO = "Mariangeles Calace"
+MATRICULA_CMCPSI = "7240"
+MATRICULA_CUCICBA = "9796"
+
+
+from reportlab.platypus import Image as RLImage
+import os as _os
+
+def get_fecha_actual():
+    """Retorna la fecha actual formateada en español."""
+    meses = [
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
     ]
-    for c in candidates:
-        if c:
-            return c.split()[-1].upper()
-    return "DOC"
+    now = datetime.now()
+    return f"{now.day} días del mes de {meses[now.month - 1]} de {now.year}"
 
-@app.route("/generar", methods=["POST"])
-def generar():
-    body = request.get_json()
-    doc_type = body.get("doc_type")
-    data = body.get("data", {})
 
-    if doc_type not in SCRIPTS:
-        return jsonify({"error": "Tipo de documento no reconocido"}), 400
+def build_pdf(data, output_path):
+    """Genera el PDF de autorización de alquiler."""
 
-    script = os.path.join(os.path.dirname(__file__), SCRIPTS[doc_type])
-    apellido = get_apellido(data)
-    output_path = f"/tmp/calace_{uuid.uuid4().hex}_{apellido}.pdf"
-    json_path = f"/tmp/calace_data_{uuid.uuid4().hex}.json"
+    doc = SimpleDocTemplate(
+        output_path,
+        pagesize=A4,
+        leftMargin=2.5 * cm,
+        rightMargin=2.5 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
 
-    try:
-        with open(json_path, "w") as f:
-            json.dump(data, f, ensure_ascii=False)
+    styles = getSampleStyleSheet()
 
-        cmd = ["python3", script, "--data-file", json_path, "--output", output_path]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    # Estilos personalizados
+    title_style = ParagraphStyle(
+        "CustomTitle",
+        parent=styles["Title"],
+        fontSize=15,
+        fontName="Helvetica-Bold",
+        spaceAfter=14,
+        alignment=TA_CENTER,
+        textColor=HexColor("#1a1a1a"),
+    )
 
-        if result.returncode != 0:
-            return jsonify({"error": result.stderr or "Error al generar PDF"}), 500
+    body_style = ParagraphStyle(
+        "CustomBody",
+        parent=styles["Normal"],
+        fontSize=10.5,
+        fontName="Helvetica",
+        leading=14,
+        alignment=TA_JUSTIFY,
+        spaceAfter=4,
+    )
 
-        if not os.path.exists(output_path):
-            return jsonify({"error": "No se generó el PDF"}), 500
+    bullet_style = ParagraphStyle(
+        "CustomBullet",
+        parent=body_style,
+        leftIndent=1.5 * cm,
+        bulletIndent=0.5 * cm,
+        spaceAfter=4,
+    )
 
-        filename = f"{doc_type.replace('-','_')}_{apellido}.pdf"
-        return send_file(
-            output_path,
-            mimetype="application/pdf",
-            as_attachment=True,
-            download_name=filename
-        )
+    firma_style = ParagraphStyle(
+        "FirmaStyle",
+        parent=styles["Normal"],
+        fontSize=10.5,
+        fontName="Helvetica",
+        leading=14,
+        alignment=TA_LEFT,
+        spaceAfter=2,
+    )
 
-    except subprocess.TimeoutExpired:
-        return jsonify({"error": "Tiempo de espera agotado"}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        for path in [output_path, json_path]:
-            if path and os.path.exists(path):
-                try:
-                    os.remove(path)
-                except:
-                    pass
+    firma_bold = ParagraphStyle(
+        "FirmaBold",
+        parent=firma_style,
+        fontName="Helvetica-Bold",
+    )
 
-@app.route("/ping")
-def ping():
-    return jsonify({"status": "ok"})
+    # Determinar moneda
+    simbolo = "$" if data.get("moneda", "pesos").lower() in ("pesos", "ars", "$") else "USD "
+    valor_formateado = f"{simbolo}{data["valor"]}"
+
+    fecha_texto = get_fecha_actual()
+
+    # --- Construir el documento ---
+    story = []
+    # --- Logo ---
+    _logo_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'logo_calace.jpg')
+    if _os.path.exists(_logo_path):
+        from reportlab.lib.units import cm as _cm
+        _logo = RLImage(_logo_path, width=5*_cm, height=2.3*_cm)
+        _logo.hAlign = 'LEFT'
+        story.append(_logo)
+        story.append(Spacer(1, 8))
+    # --- Fin logo ---
+
+    # Título
+    story.append(Paragraph("AUTORIZACIÓN DE ALQUILER", title_style))
+    story.append(Spacer(1, 6))
+
+    # Cuerpo principal
+    parrafo1 = (
+        f'Por la presente, yo, <b>{data["nombre"]}</b>, DNI Nº <b>{data["dni"]}</b>, '
+        f'en mi carácter de <b>propietario</b> del inmueble ubicado en '
+        f'<b>{data["direccion"]}</b>, autorizo a la firma <b>{INMOBILIARIA}</b>, '
+        f'a ofrecer en <b>alquiler</b> dicho inmueble, bajo las siguientes condiciones:'
+    )
+    story.append(Paragraph(parrafo1, body_style))
+    story.append(Spacer(1, 6))
+
+    # Condiciones
+    condiciones = [
+        f'<b>Valor locativo mensual</b>: {valor_formateado}',
+        f'<b>Plazo del contrato</b>: {data["plazo"]}',
+        f'<b>Honorarios inmobiliarios</b>: equivalentes a <b>un (1) mes de alquiler</b>, '
+        f'a cargo del <b>{data["honorarios"]}</b>, conforme a lo acordado entre las partes.',
+        f'<b>Condiciones generales</b>: {data["garantia"]}',
+    ]
+
+    for cond in condiciones:
+        story.append(Paragraph(f"•&nbsp;&nbsp;{cond}", bullet_style))
+
+    story.append(Spacer(1, 6))
+
+    # Autorizaciones adicionales
+    story.append(Paragraph("Asimismo, autorizo a la inmobiliaria a:", body_style))
+    story.append(Spacer(1, 4))
+
+    autorizaciones = [
+        "Tomar fotografías y/o videos del inmueble",
+        "Publicar el mismo en portales especializados y/o medios de difusión pertinentes",
+        "Coordinar y realizar visitas con potenciales inquilinos, con previo aviso",
+    ]
+
+    for aut in autorizaciones:
+        story.append(Paragraph(f"•&nbsp;&nbsp;{aut}", bullet_style))
+
+    story.append(Spacer(1, 6))
+
+    # Declaración jurada
+    declaracion = (
+        'Declaro bajo juramento que soy <b>titular registral</b> del inmueble '
+        'antes mencionado y que tengo plena capacidad legal para celebrar '
+        'contratos de locación sobre el mismo.'
+    )
+    story.append(Paragraph(declaracion, body_style))
+    story.append(Spacer(1, 6))
+
+    # Cierre
+    cierre = (
+        f'Sin otro particular, firmamos en conformidad en la localidad de '
+        f'<b>{data["localidad"]}</b>, a los <b>{fecha_texto}</b>.'
+    )
+    story.append(Paragraph(cierre, body_style))
+    story.append(Spacer(1, 20))
+
+    # Línea separadora
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#333333")))
+    story.append(Spacer(1, 10))
+
+    # Firma del propietario
+    story.append(Paragraph("<b>Firma del Propietario</b>: ......................................................", firma_bold))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(f"<b>Nombre completo</b>: {data["nombre"]}", firma_style))
+    story.append(Paragraph(f"<b>DNI Nº</b>: {data["dni"]}", firma_style))
+    story.append(Spacer(1, 16))
+
+    # Línea separadora
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#333333")))
+    story.append(Spacer(1, 10))
+
+    # Firma del martillero
+    story.append(Paragraph(
+        "<b>Firma del Martillero / Corredor Público</b>: ......................................................",
+        firma_bold
+    ))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(f"<b>Nombre completo</b>: {MARTILLERO}", firma_style))
+    story.append(Paragraph(f"<b>Matrícula CMCPSI Nº</b>: {MATRICULA_CMCPSI}", firma_style))
+    story.append(Paragraph(f"<b>Matrícula CUCICBA Nº</b>: {MATRICULA_CUCICBA}", firma_style))
+
+    # Generar PDF
+    doc.build(story)
+    print(f"PDF generado exitosamente: {output_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generar Autorización de Alquiler en PDF")
+    parser.add_argument("--data-file", required=True, help="JSON con los datos del formulario")
+    parser.add_argument("--output",    required=True, help="Ruta del archivo PDF de salida")
+    args = parser.parse_args()
+
+    import json
+    with open(args.data_file, "r") as f:
+        data = json.load(f)
+    build_pdf(data, args.output)
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    main()
