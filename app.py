@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import subprocess
-import tempfile
 import os
 import json
 import uuid
@@ -27,8 +26,9 @@ def get_apellido(data):
     candidates = [
         data.get("nombre"), data.get("nombre_interesado"),
         data.get("locatario_nombre"), data.get("oferente_nombre"),
-        data.get("comprador_nombre"), data.get("cliente_nombre"),
-        data.get("propietario_nombre"), data.get("oferente"),
+        data.get("comprador1_nombre"), data.get("cliente_nombre"),
+        data.get("propietario1_nombre"), data.get("oferente"),
+        data.get("propietario_nombre"),
     ]
     for c in candidates:
         if c:
@@ -47,33 +47,13 @@ def generar():
     script = os.path.join(os.path.dirname(__file__), SCRIPTS[doc_type])
     apellido = get_apellido(data)
     output_path = f"/tmp/calace_{uuid.uuid4().hex}_{apellido}.pdf"
-    json_path = None
+    json_path = f"/tmp/calace_data_{uuid.uuid4().hex}.json"
 
     try:
-        if doc_type == "autorizacion-alquiler":
-            cmd = [
-                "python3", script,
-                "--nombre",     data.get("nombre", ""),
-                "--dni",        data.get("dni", ""),
-                "--direccion",  data.get("direccion", ""),
-                "--localidad",  data.get("localidad", ""),
-                "--valor",      data.get("valor", ""),
-                "--moneda",     data.get("moneda", "pesos"),
-                "--plazo",      data.get("plazo", ""),
-                "--honorarios", data.get("honorarios", ""),
-                "--garantia",   data.get("garantia", ""),
-                "--output",     output_path,
-            ]
-        else:
-            json_path = f"/tmp/calace_data_{uuid.uuid4().hex}.json"
-            with open(json_path, "w") as f:
-                json.dump(data, f, ensure_ascii=False)
-            cmd = [
-                "python3", script,
-                "--data-file", json_path,
-                "--output",    output_path,
-            ]
+        with open(json_path, "w") as f:
+            json.dump(data, f, ensure_ascii=False)
 
+        cmd = ["python3", script, "--data-file", json_path, "--output", output_path]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
         if result.returncode != 0:
