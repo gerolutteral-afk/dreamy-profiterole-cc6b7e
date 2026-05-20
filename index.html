@@ -84,6 +84,20 @@
   .dyn-row-remove:disabled { opacity:.3; cursor:not-allowed; }
   .dyn-add-btn { align-self:flex-start; background:transparent; border:1.5px dashed var(--border); border-radius:8px; padding:8px 16px; font-family:"DM Sans",sans-serif; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; transition:all .15s; margin-top:4px; }
   .dyn-add-btn:hover { border-color:var(--gold); color:var(--ink); border-style:solid; }
+  /* Modal Enviar a firmar */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(26,18,8,.7); z-index:300; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.show { display:flex; }
+  .modal-box { background:var(--white); border-radius:14px; width:100%; max-width:480px; overflow:hidden; border:1.5px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  .modal-header { background:var(--ink); padding:18px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .modal-title { font-family:"Playfair Display",serif; color:var(--white); font-size:18px; }
+  .modal-close { background:transparent; border:none; color:#aaa; font-size:18px; cursor:pointer; line-height:1; padding:4px; }
+  .modal-close:hover { color:var(--gold); }
+  .modal-body { padding:24px; }
+  .modal-sub { color:var(--muted); font-size:13px; margin-bottom:18px; font-weight:300; line-height:1.5; }
+  .modal-footer { display:flex; justify-content:flex-end; gap:10px; padding:16px 24px; background:var(--cream); border-top:1px solid var(--border); }
+  .modal-error { background:#fff0f0; border:1.5px solid #f0a0a0; border-radius:8px; padding:10px 14px; color:#8b2020; font-size:13px; margin-bottom:14px; display:none; line-height:1.5; }
+  .modal-success { background:#eef6f0; border:1.5px solid #9cc6ad; border-radius:8px; padding:12px 16px; color:#2a5a3a; font-size:13px; margin-bottom:4px; display:none; line-height:1.5; }
+  .mini-spinner { width:15px; height:15px; border:2px solid rgba(26,18,8,.3); border-top-color:var(--ink); border-radius:50%; animation:spin .8s linear infinite; display:inline-block; }
   @media(max-width:600px) { .form-row{grid-template-columns:1fr;} header{padding:14px 16px;} .container{padding:20px 14px;} .doc-grid{grid-template-columns:repeat(2,1fr);} .form-body{padding:20px 16px;} .form-actions{padding:16px;} .dyn-table-head, .dyn-row { grid-template-columns:1.6fr 1fr 1fr 1fr 28px; gap:4px; } }
 </style>
 </head>
@@ -159,9 +173,47 @@
         <p class="success-sub">El archivo se guardó en tu dispositivo.<br>Revisá la carpeta de Descargas.</p>
         <div class="success-actions">
           <button class="btn btn-dark" onclick="backToStep1()">Nuevo documento</button>
-          <button class="btn btn-primary" onclick="generatePDF()">Descargar de nuevo</button>
+          <button class="btn btn-ghost" onclick="generatePDF()">Descargar de nuevo</button>
+          <button class="btn btn-primary" onclick="openFirmarModal()">✒ Enviar a firmar</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ENVIAR A FIRMAR -->
+<div class="modal-overlay" id="firmarModal" onclick="if(event.target===this)closeFirmarModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Enviar a firmar</span>
+      <button class="modal-close" onclick="closeFirmarModal()" title="Cerrar">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-sub">El documento se enviará por email para su firma electrónica. El firmante elige dónde firmar.</p>
+      <div class="modal-error" id="firmarError"></div>
+      <div class="modal-success" id="firmarSuccess"></div>
+      <div id="firmarFields">
+        <div class="field" style="margin-bottom:12px">
+          <label>Nombre del firmante *</label>
+          <input type="text" id="firmaNombre" placeholder="Juan García">
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>Email del firmante *</label>
+          <input type="email" id="firmaEmail" placeholder="juan@email.com">
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>Asunto del mail</label>
+          <input type="text" id="firmaAsunto" value="Documento para firmar - Calace Propiedades">
+        </div>
+        <div class="field">
+          <label>Mensaje (opcional)</label>
+          <textarea id="firmaMensaje" style="min-height:90px">Estimado/a, le enviamos el documento adjunto para su firma electrónica. Ante cualquier consulta quedamos a su disposición. Saludos cordiales, Calace Propiedades.</textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="firmarCancelBtn" onclick="closeFirmarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="firmarSendBtn" onclick="enviarAFirmar()">Enviar a firmar</button>
     </div>
   </div>
 </div>
@@ -170,6 +222,10 @@
 
 
 const BACKEND = "https://satisfied-truth-v3-production.up.railway.app";
+
+// PDF generado más reciente — se guarda para poder enviarlo a firmar
+let lastPdfBlob = null;
+let lastPdfFilename = "documento.pdf";
 
 const FORMS = {
   "autorizacion-alquiler": {
@@ -770,6 +826,11 @@ async function generatePDF() {
     const disposition = response.headers.get("Content-Disposition") || "";
     const match = disposition.match(/filename="?([^"]+)"?/);
     const filename = match ? match[1] : "documento.pdf";
+
+    // Guardamos el PDF en memoria para poder enviarlo a firmar sin regenerarlo
+    lastPdfBlob = blob;
+    lastPdfFilename = filename;
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = filename; a.click();
@@ -802,6 +863,95 @@ function updateSteps(active) {
     if (i+1 < active) el.classList.add("done");
     else if (i+1 === active) el.classList.add("active");
   });
+}
+
+
+// ── Enviar a firmar (SignWell) ──────────────────────────────────────────────
+function openFirmarModal() {
+  if (!lastPdfBlob) {
+    alert("No hay un PDF generado para enviar. Generá el documento primero.");
+    return;
+  }
+  document.getElementById("firmarError").style.display = "none";
+  document.getElementById("firmarSuccess").style.display = "none";
+  document.getElementById("firmarFields").style.display = "block";
+  document.getElementById("firmarSendBtn").style.display = "inline-flex";
+  document.getElementById("firmarCancelBtn").textContent = "Cancelar";
+  document.getElementById("firmaNombre").value = "";
+  document.getElementById("firmaEmail").value = "";
+  document.getElementById("firmarModal").classList.add("show");
+  document.getElementById("firmaNombre").focus();
+}
+
+function closeFirmarModal() {
+  document.getElementById("firmarModal").classList.remove("show");
+}
+
+async function enviarAFirmar() {
+  const nombre = document.getElementById("firmaNombre").value.trim();
+  const email = document.getElementById("firmaEmail").value.trim();
+  const asunto = document.getElementById("firmaAsunto").value.trim();
+  const mensaje = document.getElementById("firmaMensaje").value.trim();
+  const errorBox = document.getElementById("firmarError");
+  const successBox = document.getElementById("firmarSuccess");
+  const sendBtn = document.getElementById("firmarSendBtn");
+  errorBox.style.display = "none";
+
+  // Validación
+  if (!nombre) {
+    errorBox.textContent = "Ingresá el nombre del firmante.";
+    errorBox.style.display = "block";
+    return;
+  }
+  const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  if (!emailRe.test(email)) {
+    errorBox.textContent = "Ingresá un email válido.";
+    errorBox.style.display = "block";
+    return;
+  }
+  if (!lastPdfBlob) {
+    errorBox.textContent = "No hay un PDF para enviar. Generalo de nuevo.";
+    errorBox.style.display = "block";
+    return;
+  }
+
+  // Estado de carga
+  sendBtn.disabled = true;
+  const sendBtnOriginal = sendBtn.innerHTML;
+  sendBtn.innerHTML = '<span class="mini-spinner"></span> Enviando...';
+
+  try {
+    const fd = new FormData();
+    fd.append("archivo", lastPdfBlob, lastPdfFilename);
+    fd.append("nombre_firmante", nombre);
+    fd.append("email_firmante", email);
+    fd.append("asunto", asunto);
+    fd.append("mensaje", mensaje);
+
+    const response = await fetch(`${BACKEND}/enviar-a-firmar`, {
+      method: "POST",
+      body: fd
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || `Error del servidor (${response.status})`);
+    }
+
+    // Éxito
+    document.getElementById("firmarFields").style.display = "none";
+    sendBtn.style.display = "none";
+    document.getElementById("firmarCancelBtn").textContent = "Cerrar";
+    successBox.textContent = "\u2713 " + (result.mensaje || `Documento enviado a ${email}. Te avisamos cuando lo firme.`);
+    successBox.style.display = "block";
+
+  } catch (err) {
+    errorBox.textContent = "Error: " + err.message;
+    errorBox.style.display = "block";
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = sendBtnOriginal;
+  }
 }
 
 </script>
