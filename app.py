@@ -161,6 +161,7 @@ def enviar_a_firmar():
     payload = {
         "test_mode": test_mode,
         "draft": False,
+        "with_signature_page": True,  # agrega una página de firma al final; el firmante firma ahí
         "name": asunto,
         "subject": asunto,
         "message": mensaje,
