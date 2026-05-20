@@ -20,6 +20,7 @@ SCRIPTS = {
     "notif-refuerzo":         "generar_notif_refuerzo.py",
     "notif-contraoferta":     "generar_notif_aceptacion.py",
     "nota-presentacion":      "generar_nota_presentacion.py",
+    "reporte-rendimiento":    "generar_reporte_rendimiento.py",
 }
 
 def get_apellido(data):
@@ -33,6 +34,13 @@ def get_apellido(data):
     for c in candidates:
         if c:
             return c.split()[-1].upper()
+    # Fallback para docs sin propietario/cliente (ej: reporte-rendimiento → usa dirección)
+    direccion = data.get("direccion") or data.get("direccion_inmueble") or data.get("domicilio_inmueble")
+    if direccion:
+        primera = direccion.split()[0] if direccion.split() else ""
+        limpio = "".join(c for c in primera if c.isalnum())
+        if limpio:
+            return limpio.upper()
     return "DOC"
 
 @app.route("/generar", methods=["POST"])

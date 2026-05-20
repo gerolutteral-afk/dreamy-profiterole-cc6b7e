@@ -70,7 +70,21 @@
   .success-title { font-family:"Playfair Display",serif; font-size:24px; margin-bottom:8px; }
   .success-sub { color:var(--muted); font-size:14px; margin-bottom:28px; line-height:1.6; }
   .success-actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-  @media(max-width:600px) { .form-row{grid-template-columns:1fr;} header{padding:14px 16px;} .container{padding:20px 14px;} .doc-grid{grid-template-columns:repeat(2,1fr);} .form-body{padding:20px 16px;} .form-actions{padding:16px;} }
+  /* Textarea (mismo estilo que input pero multilinea) */
+  .field textarea { border:1.5px solid var(--border); border-radius:8px; padding:10px 14px; font-family:"DM Sans",sans-serif; font-size:14px; color:var(--ink); background:var(--paper); outline:none; transition:border-color .15s; width:100%; min-height:140px; resize:vertical; line-height:1.5; }
+  .field textarea:focus { border-color:var(--gold); background:var(--white); }
+  /* Dynamic table (Rendimiento por portal) */
+  .dyn-table { display:flex; flex-direction:column; gap:8px; }
+  .dyn-table-head, .dyn-row { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 32px; gap:8px; align-items:center; }
+  .dyn-table-head { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding:0 4px 4px; border-bottom:1px solid var(--border); margin-bottom:2px; }
+  .dyn-row input { border:1.5px solid var(--border); border-radius:6px; padding:8px 10px; font-family:"DM Sans",sans-serif; font-size:13px; color:var(--ink); background:var(--paper); outline:none; transition:border-color .15s; width:100%; }
+  .dyn-row input:focus { border-color:var(--gold); background:var(--white); }
+  .dyn-row-remove { background:transparent; border:1.5px solid var(--border); border-radius:6px; width:32px; height:32px; cursor:pointer; color:var(--muted); font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s; padding:0; }
+  .dyn-row-remove:hover { border-color:#c44; color:#c44; }
+  .dyn-row-remove:disabled { opacity:.3; cursor:not-allowed; }
+  .dyn-add-btn { align-self:flex-start; background:transparent; border:1.5px dashed var(--border); border-radius:8px; padding:8px 16px; font-family:"DM Sans",sans-serif; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; transition:all .15s; margin-top:4px; }
+  .dyn-add-btn:hover { border-color:var(--gold); color:var(--ink); border-style:solid; }
+  @media(max-width:600px) { .form-row{grid-template-columns:1fr;} header{padding:14px 16px;} .container{padding:20px 14px;} .doc-grid{grid-template-columns:repeat(2,1fr);} .form-body{padding:20px 16px;} .form-actions{padding:16px;} .dyn-table-head, .dyn-row { grid-template-columns:1.6fr 1fr 1fr 1fr 28px; gap:4px; } }
 </style>
 </head>
 <body>
@@ -116,6 +130,7 @@
       <div class="doc-card" data-cat="venta" onclick="selectDoc('notif-refuerzo',this)"><span class="doc-icon">📨</span><div class="doc-name">Notif. Refuerzo Reserva</div><div class="doc-tag venta">Compraventa</div></div>
       <div class="doc-card" data-cat="venta" onclick="selectDoc('notif-contraoferta',this)"><span class="doc-icon">📨</span><div class="doc-name">Notif. Aceptación Contraoferta</div><div class="doc-tag venta">Compraventa</div></div>
       <div class="doc-card" data-cat="general" onclick="selectDoc('nota-presentacion',this)"><span class="doc-icon">🤝</span><div class="doc-name">Nota de Presentación</div><div class="doc-tag general">General</div></div>
+      <div class="doc-card" data-cat="general" onclick="selectDoc('reporte-rendimiento',this)"><span class="doc-icon">📊</span><div class="doc-name">Reporte de Rendimiento</div><div class="doc-tag general">Reporte</div></div>
     </div>
   </div>
 
@@ -479,6 +494,34 @@ const FORMS = {
         {id:"localidad_firma", label:"Localidad de firma", placeholder:"San Isidro"},
       ]}
     ]
+  },
+  "reporte-rendimiento": {
+    title:"Reporte de Rendimiento Mensual", tag:"Reporte",
+    sections:[
+      { title:"Inmueble y período", fields:[
+        {id:"direccion", label:"Dirección de la propiedad", placeholder:"Cucha Cucha 1234"},
+        {id:"barrio", label:"Barrio / zona", placeholder:"Paternal"},
+        {id:"mes", label:"Mes del reporte", type:"month", span:"full"},
+      ]},
+      { title:"Totales", fields:[
+        {id:"exposicion_total", label:"Exposición Total", placeholder:"0"},
+        {id:"consultas_totales", label:"Consultas Totales", placeholder:"0"},
+        {id:"visitas_totales", label:"Visitas Totales", placeholder:"0", span:"full"},
+      ]},
+      { title:"Rendimiento por portal", fields:[
+        {id:"portales", type:"dynamic_table", span:"full",
+         columns:[
+           {id:"sitio",      label:"Sitio",      placeholder:"ML"},
+           {id:"exposicion", label:"Exposición", placeholder:"0"},
+           {id:"consultas",  label:"Consultas",  placeholder:"0"},
+           {id:"visitas",    label:"Visitas",    placeholder:"0"},
+         ]},
+      ]},
+      { title:"Comentarios", fields:[
+        {id:"comentarios", label:"Observaciones (usá guiones para hacer bullets)", type:"textarea",
+         placeholder:"- Recibimos X consultas en total...\n- La persona que visitó...\n- En conclusión...", span:"full"},
+      ]}
+    ]
   }
 };
 
@@ -571,14 +614,83 @@ function renderForm(key) {
     html += "</div>";
   });
   document.getElementById("formBody").innerHTML = html;
+  // Sembrar 1 fila inicial en cada dynamic_table
+  doc.sections.forEach(sec => {
+    sec.fields.forEach(f => {
+      if (f.type === "dynamic_table") dynTableAddRow(f.id);
+    });
+  });
 }
 
 function renderField(f) {
-  const input = f.type === "select"
-    ? `<select id="field_${f.id}" onchange="handleConditionals()">${f.options.map(o=>`<option value="${o}">${o}</option>`).join("")}</select>`
-    : `<input type="text" id="field_${f.id}" placeholder="${f.placeholder||""}">`;
+  let input;
+  if (f.type === "select") {
+    input = `<select id="field_${f.id}" onchange="handleConditionals()">${f.options.map(o=>`<option value="${o}">${o}</option>`).join("")}</select>`;
+  } else if (f.type === "textarea") {
+    input = `<textarea id="field_${f.id}" placeholder="${f.placeholder||""}"></textarea>`;
+  } else if (f.type === "month") {
+    input = `<input type="month" id="field_${f.id}" placeholder="${f.placeholder||""}">`;
+  } else if (f.type === "dynamic_table") {
+    const cols = f.columns || [];
+    const headerCells = cols.map(c => `<div>${c.label}</div>`).join("") + `<div></div>`;
+    input = `
+      <div class="dyn-table" id="dyn_${f.id}" data-field-id="${f.id}">
+        <div class="dyn-table-head">${headerCells}</div>
+        <div class="dyn-rows" id="dyn_rows_${f.id}"></div>
+        <button type="button" class="dyn-add-btn" onclick="dynTableAddRow('${f.id}')">+ Agregar fila</button>
+      </div>`;
+  } else {
+    input = `<input type="text" id="field_${f.id}" placeholder="${f.placeholder||""}">`;
+  }
   const hidden = f.conditional ? ' style="display:none"' : '';
-  return `<div class="field" id="wrap_${f.id}"${hidden}><label>${f.label}</label>${input}</div>`;
+  const labelHtml = (f.type === "dynamic_table") ? "" : `<label>${f.label||""}</label>`;
+  return `<div class="field" id="wrap_${f.id}"${hidden}>${labelHtml}${input}</div>`;
+}
+
+// Dynamic tables (Rendimiento por portal)
+function _getDynTableConfig(fieldId) {
+  if (!currentDocKey) return null;
+  const doc = FORMS[currentDocKey];
+  for (const sec of doc.sections) {
+    for (const f of sec.fields) {
+      if (f.id === fieldId && f.type === "dynamic_table") return f;
+    }
+  }
+  return null;
+}
+
+function dynTableAddRow(fieldId) {
+  const f = _getDynTableConfig(fieldId);
+  if (!f) return;
+  const cont = document.getElementById(`dyn_rows_${fieldId}`);
+  if (!cont) return;
+  const cells = f.columns.map(c =>
+    `<input type="text" data-col="${c.id}" placeholder="${c.placeholder||""}">`
+  ).join("");
+  const row = document.createElement("div");
+  row.className = "dyn-row";
+  row.innerHTML = `${cells}<button type="button" class="dyn-row-remove" onclick="dynTableRemoveRow(this,'${fieldId}')" title="Quitar fila">✕</button>`;
+  cont.appendChild(row);
+  _updateDynTableRemoveState(fieldId);
+}
+
+function dynTableRemoveRow(btn, fieldId) {
+  const row = btn.closest(".dyn-row");
+  if (!row) return;
+  const cont = document.getElementById(`dyn_rows_${fieldId}`);
+  if (cont && cont.querySelectorAll(".dyn-row").length <= 1) return;
+  row.remove();
+  _updateDynTableRemoveState(fieldId);
+}
+
+function _updateDynTableRemoveState(fieldId) {
+  const cont = document.getElementById(`dyn_rows_${fieldId}`);
+  if (!cont) return;
+  const rows = cont.querySelectorAll(".dyn-row");
+  rows.forEach(r => {
+    const btn = r.querySelector(".dyn-row-remove");
+    if (btn) btn.disabled = (rows.length <= 1);
+  });
 }
 
 function handleConditionals() {
@@ -608,8 +720,25 @@ function getFormData() {
   const data = {};
   doc.sections.forEach(sec => {
     sec.fields.forEach(f => {
-      const el = document.getElementById("field_" + f.id);
-      if (el) data[f.id] = el.value.trim();
+      if (f.type === "dynamic_table") {
+        // Recolectar filas de la dynamic table - descartar filas vacias
+        const cont = document.getElementById("dyn_rows_" + f.id);
+        const rows = [];
+        if (cont) {
+          cont.querySelectorAll(".dyn-row").forEach(rowEl => {
+            const obj = {};
+            (f.columns || []).forEach(c => {
+              const inp = rowEl.querySelector(`[data-col="${c.id}"]`);
+              obj[c.id] = inp ? inp.value.trim() : "";
+            });
+            if (Object.values(obj).some(v => v !== "")) rows.push(obj);
+          });
+        }
+        data[f.id] = rows;
+      } else {
+        const el = document.getElementById("field_" + f.id);
+        if (el) data[f.id] = el.value.trim();
+      }
     });
   });
   // Special nested structure for contrato-alquiler
